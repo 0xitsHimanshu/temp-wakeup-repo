@@ -1,9 +1,14 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"time"
 	"upbot-server-go/internal/models"
 	"upbot-server-go/internal/repository"
+
+	"github.com/go-redis/redis/v8"
 )
 
 // PingService defines the business logic for pings.
@@ -12,12 +17,16 @@ type PingService interface {
 }
 
 type pingService struct {
-	repo repository.TaskRepository
+	repo        repository.TaskRepository
+	redisClient *redis.Client
 }
 
 // NewPingService creates a new instance of PingService.
-func NewPingService(repo repository.TaskRepository) PingService {
-	return &pingService{repo: repo}
+func NewPingService(repo repository.TaskRepository, redisClient *redis.Client) PingService {
+	return &pingService{
+		repo:        repo,
+		redisClient: redisClient,
+	}
 }
 
 type CreatePingRequest struct {
@@ -68,7 +77,17 @@ func (s *pingService) CreatePing(email string, req CreatePingRequest) (*models.T
 		return nil, err
 	}
 
-	// TODO: Add to Redis Queue here (or via an event)
+	// 6. Add to Redis Queue
+	taskMember := fmt.Sprintf("%d|%s", newTask.ID, newTask.URL)
+	err = s.redisClient.ZAdd(context.Background(), "ping_queue", &redis.Z{
+		Score:  float64(time.Now().Add(10 * time.Second).Unix()),
+		Member: taskMember,
+	}).Err()
+
+	if err != nil {
+		// Note: In a real system, you might want to rollback the DB creation or have a retry mechanism
+		return nil, fmt.Errorf("failed to schedule task: %w", err)
+	}
 
 	return newTask, nil
 }

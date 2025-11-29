@@ -13,6 +13,8 @@ type TaskRepository interface {
 	CountActiveTasksByUserID(userID uint) (int64, error)
 	FindByURLAndUserID(url string, userID uint) (*models.Task, error)
 	GetUserByEmail(email string) (*models.User, error)
+	FindByID(id uint) (*models.Task, error)
+	CreateUser(user *models.User) error
 }
 
 type taskRepository struct {
@@ -28,10 +30,23 @@ func (r *taskRepository) Create(task *models.Task) error {
 	return r.db.Create(task).Error
 }
 
+func (r *taskRepository) CreateUser(user *models.User) error {
+	return r.db.Create(user).Error
+}
+
 func (r *taskRepository) CountActiveTasksByUserID(userID uint) (int64, error) {
 	var count int64
 	err := r.db.Model(&models.Task{}).Where("user_id = ? AND is_active = ?", userID, true).Count(&count).Error
 	return count, err
+}
+
+func (r *taskRepository) FindByID(id uint) (*models.Task, error) {
+	var task models.Task
+	err := r.db.First(&task, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
 }
 
 func (r *taskRepository) FindByURLAndUserID(url string, userID uint) (*models.Task, error) {
