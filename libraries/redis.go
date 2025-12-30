@@ -36,7 +36,7 @@ func GetClient() *redis.Client {
 	if redisAddr == "" {
 		redisAddr = "localhost:6379"
 	}
-	
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     redisAddr,
 		Password: "",

@@ -86,14 +86,14 @@ func CreatePingHandler(c *gin.Context) {
 
 	redisClient := libraries.GetInstance()
 	taskMember := fmt.Sprintf("%d|%s", newTask.ID, newTask.URL)
-	
+
 	// Schedule next ping for 10 minutes from now
 	redisClient.ZAdd(c, "ping_queue", &redis.Z{Score: float64(time.Now().Add(10 * time.Minute).Unix()),
 		Member: taskMember})
-	
+
 	// Perform immediate ping in background
 	go worker.PerformPing(newTask.ID, newTask.URL)
-	
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Task created successfully and initial ping started",
 		"url":     pingReq.Url,

@@ -18,18 +18,18 @@ import (
 // PerformPing executes an immediate ping for a given task
 func PerformPing(taskID uint, url string) {
 	log.Printf("Performing immediate ping for task %d: %s", taskID, url)
-	
+
 	redisClient := libraries.GetInstance()
 	taskMember := fmt.Sprintf("%d|%s", taskID, url)
-	
+
 	if err := TrimLogs(taskID); err != nil {
 		log.Printf("Error trimming logs for task %d: %v", taskID, err)
 	}
-	
+
 	timeNow := time.Now()
 	resp, err := http.Get(url)
 	timeSince := time.Since(timeNow).Milliseconds()
-	
+
 	if err != nil {
 		newLog := models.Log{
 			LogResponse: "Failed to ping URL",
@@ -45,10 +45,10 @@ func PerformPing(taskID uint, url string) {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	// Consider 2xx and 3xx status codes as success (server is responding)
 	isSuccess := resp.StatusCode >= 200 && resp.StatusCode < 400
-	
+
 	if !isSuccess {
 		newLog := models.Log{
 			LogResponse: fmt.Sprintf("Server responded with status: %d", resp.StatusCode),
@@ -61,7 +61,7 @@ func PerformPing(taskID uint, url string) {
 		if err := database.DB.Create(&newLog).Error; err != nil {
 			log.Printf("Error creating log: %v", err)
 		}
-		
+
 		var task models.Task
 		if err := database.DB.First(&task, taskID).Error; err == nil {
 			task.FailCount++
@@ -87,7 +87,7 @@ func PerformPing(taskID uint, url string) {
 		log.Printf("Ping failed for %s with status code: %d", url, resp.StatusCode)
 		return
 	}
-	
+
 	// Success: Status code is 2xx or 3xx
 	if isSuccess {
 		nextPing := time.Now().Add(10 * time.Minute).Unix()
@@ -97,7 +97,7 @@ func PerformPing(taskID uint, url string) {
 		}).Result()
 		// Reset fail count on success
 		database.DB.Model(&models.Task{}).Where("id = ?", taskID).Update("fail_count", 0)
-		
+
 		newLog := models.Log{
 			LogResponse: fmt.Sprintf("Server is up (Status: %d)", resp.StatusCode),
 			Time:        time.Now(),
@@ -142,10 +142,10 @@ func StartPingWorker() {
 				log.Printf("Invalid task ID: %s", taskIdStr)
 				continue
 			}
-			
+
 			// Remove from queue before pinging to avoid duplicates
 			redisClient.ZRem(context.Background(), "ping_queue", task)
-			
+
 			// Use the extracted ping function
 			PerformPing(uint(taskId), url)
 		}
