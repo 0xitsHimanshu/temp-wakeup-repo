@@ -110,10 +110,6 @@ func PerformPing(taskID uint, url string) {
 			log.Printf("Error creating log: %v", err)
 		}
 		log.Printf("Successfully pinged %s - Status %d (took %dms)", url, resp.StatusCode, timeSince)
-		if err := database.DB.Create(&newLog).Error; err != nil {
-			log.Printf("Error creating log: %v", err)
-		}
-		log.Printf("Successfully pinged %s (took %dms)", url, timeSince)
 	}
 }
 
